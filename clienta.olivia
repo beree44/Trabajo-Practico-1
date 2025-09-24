@@ -1,0 +1,231 @@
+const readline = require("readline");
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+class Tarea {
+  constructor(titulo, descripcion, vencimiento) {
+    this.titulo = titulo;
+    this.descripcion = descripcion;
+    this.estado = "Pendiente"; // por defecto
+    this.dificultad = "+--"; // por defecto
+    this.vencimiento = vencimiento;
+    this.creacion = new Date().toLocaleDateString("es-AR");
+  }
+}
+
+const MAX_TAREAS = 100;
+let tareas = [];
+let nombre = "Olivia";
+
+function limpiarPantalla() {
+  console.clear();
+}
+
+function preguntar(pregunta) {
+  return new Promise((resolve) => rl.question(pregunta, resolve));
+}
+
+async function mostrarMenuPrincipal() {
+  limpiarPantalla();
+  console.log(`¡Hola ${nombre}!\n`);
+  console.log("¿Qué deseas hacer?\n");
+  console.log("[1] Ver Mis Tareas");
+  console.log("[2] Buscar una Tarea");
+  console.log("[3] Agregar una Tarea");
+  console.log("[0] Salir\n");
+
+  let opcion = await preguntar("> ");
+  switch (opcion.trim()) {
+    case "1":
+      await mostrarmenuFiltrarTareas();
+      break;
+    case "2":
+      await buscarTareaPorTitulo();
+      break;
+    case "3":
+      await crearTarea();
+      break;
+    case "0":
+      console.log("Cerrando menú...");
+      rl.close();
+      process.exit(0);
+    default:
+      console.log("Opción no válida.");
+      await pausar();
+      await mostrarMenuPrincipal();
+  }
+}
+
+async function mostrarmenuFiltrarTareas() {
+  limpiarPantalla();
+  console.log("¿Qué tareas deseas ver?\n");
+  console.log("[1] Todas");
+  console.log("[2] Pendientes");
+  console.log("[3] En curso");
+  console.log("[4] Terminadas");
+  console.log("[0] Volver\n");
+
+  let opcion = await preguntar("> ");
+  switch (opcion.trim()) {
+    case "1":
+      await listarTareas();
+      break;
+    case "2":
+      await listarTareas("Pendiente");
+      break;
+    case "3":
+      await listarTareas("En curso");
+      break;
+    case "4":
+      await listarTareas("Terminada");
+      break;
+    case "0":
+      await mostrarMenuPrincipal();
+      return;
+    default:
+      console.log("Opción no válida.");
+      await pausar();
+  }
+  await mostrarmenuFiltrarTareas();
+}
+
+async function listarTareas(filtro = null) {
+  limpiarPantalla();
+  console.log(`--- ${filtro ? "Tareas " + filtro : "Todas tus tareas"} ---\n`);
+  let lista = tareas
+    .map((t, i) => ({ ...t, index: i }))
+    .filter((t) => (filtro ? t.estado === filtro : true));
+
+  if (lista.length === 0) {
+    console.log("No hay tareas para mostrar.");
+    await pausar();
+    return;
+  }
+
+  lista.forEach((t, i) => {
+    console.log(`[${i + 1}] ${t.titulo} | Estado: ${t.estado} | Vencimiento: ${t.vencimiento}`);
+  });
+
+  let sel = await preguntar("\n¿Ver detalles de alguna tarea? (número o 0 para volver): ");
+  let seleccion = parseInt(sel);
+  if (seleccion > 0 && seleccion <= lista.length) {
+    await mostrarDetalleTarea(lista[seleccion - 1].index);
+  }
+}
+
+async function buscarTareaPorTitulo() {
+  limpiarPantalla();
+  let query = await preguntar("Introduce el título de la tarea:\n> ");
+
+  let resultados = tareas
+    .map((t, i) => ({ ...t, index: i }))
+    .filter((t) => t.titulo.toLowerCase().includes(query.toLowerCase()));
+
+  if (resultados.length === 0) {
+    console.log("No se encontraron tareas.");
+    await pausar();
+    await mostrarMenuPrincipal();
+    return;
+  }
+
+  console.log("\n--- Resultados ---\n");
+  resultados.forEach((t, i) => console.log(`[${i + 1}] ${t.titulo}`));
+  let sel = await preguntar("\n¿Ver detalles de alguna? (número o 0 para volver): ");
+  let seleccion = parseInt(sel);
+  if (seleccion > 0 && seleccion <= resultados.length) {
+    await mostrarDetalleTarea(resultados[seleccion - 1].index);
+  } else {
+    await mostrarMenuPrincipal();
+  }
+  await mostrarMenuPrincipal();
+}
+
+async function crearTarea() {
+  if (tareas.length >= MAX_TAREAS) {
+    console.log("No se pueden agregar más tareas. Límite alcanzado.");
+    await pausar();
+    await mostrarMenuPrincipal();
+    return;
+  }
+
+  limpiarPantalla();
+  let titulo = await preguntar("Título de la tarea:\n> ");
+  let descripcion = await preguntar("Descripción:\n> ");
+  let vencimiento = await preguntar("Fecha de vencimiento (DD/MM/AAAA):\n> ");
+  let nueva = new Tarea(titulo, descripcion, vencimiento);
+  tareas.push(nueva);
+  console.log(`\n¡Tarea '${titulo}' creada exitosamente!`);
+  await pausar();
+  await mostrarMenuPrincipal();
+}
+
+async function mostrarDetalleTarea(index) {
+  let t = tareas[index];
+  limpiarPantalla();
+  console.log("--- Detalle de la Tarea ---\n");
+  console.log(`Título:       ${t.titulo}`);
+  console.log(`Descripción: ${t.descripcion}`);
+  console.log(`Estado:       ${t.estado}`);
+  console.log(`Dificultad:  ${t.dificultad}`);
+  console.log(`Vencimiento: ${t.vencimiento}`);
+  console.log(`Creación:    ${t.creacion}`);
+  console.log("\n[E] Editar | [D] Eliminar | [0] Volver");
+  let op = await preguntar("> ");
+
+  if (op.toLowerCase() === "e") {
+    await editarTarea(index);
+    await mostrarDetalleTarea(index); 
+  } else if (op.toLowerCase() === "d") {
+    let confirm = await preguntar("¿Seguro que quieres eliminarla? (s/n): ");
+    if (confirm.toLowerCase() === "s") {
+      tareas.splice(index, 1);
+      console.log("Tarea eliminada.");
+      await pausar();
+    }
+    await mostrarMenuPrincipal(); 
+  }
+}
+
+async function editarTarea(index) {
+  let t = tareas[index];
+
+  let desc = await preguntar(`Nueva descripción (ENTER para mantener actual: ${t.descripcion}):\n> `);
+  if (desc.trim() !== "") t.descripcion = desc;
+
+  let est = await preguntar("Nuevo estado [P]endiente/[E]n curso/[T]erminada/[C]ancelada:\n> ");
+  switch (est.toLowerCase()) {
+    case "p":
+      t.estado = "Pendiente";
+      break;
+    case "e":
+      t.estado = "En curso";
+      break;
+    case "t":
+      t.estado = "Terminada";
+      break;
+    case "c":
+      t.estado = "Cancelada";
+      break;
+  }
+  let dif = await preguntar("Nueva dificultad [1] fácil/[2] media/[3] difícil:\n> ");
+  if (dif === "1") t.dificultad = "+--";
+  else if (dif === "2") t.dificultad = "++-";
+  else if (dif === "3") t.dificultad = "+++";
+
+  let venc = await preguntar(`Nuevo vencimiento (actual ${t.vencimiento}):\n> `);
+  if (venc.trim() !== "") t.vencimiento = venc;
+
+  console.log("¡Tarea actualizada!");
+  await pausar();
+}
+
+async function pausar() {
+  await preguntar("\nPresiona ENTER para continuar...");
+}
+
+mostrarMenuPrincipal();
+// Pereyra Agustín
+// Góngora Berenice
