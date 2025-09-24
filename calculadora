@@ -1,0 +1,36 @@
+const readline = require("readline").createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+function calcular(num1, num2, operador) {
+  switch (operador) {
+    case "+":
+      return num1 + num2;
+    case "-":
+      return num1 - num2;
+    case "*":
+      return num1 * num2;
+    case "/":
+      return num2 !== 0 ? num1 / num2 : "Error: división por cero";
+    default:
+      return "Operador inválido";
+  }
+}
+
+readline.question("Ingrese el primer número: ", (input1) => {
+  const num1 = Number(input1);
+
+  readline.question("Ingrese el segundo número: ", (input2) => {
+    const num2 = Number(input2);
+
+    readline.question("Ingrese el operador (+, -, *, /): ", (operador) => {
+      const resultado = calcular(num1, num2, operador);
+      console.log(`Resultado: ${resultado}`);
+      readline.close();
+    });
+
+  });
+});
+// Pereyra Agustín
+// Góngora Berenice
